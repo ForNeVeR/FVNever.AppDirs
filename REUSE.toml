@@ -1,5 +1,5 @@
 version = 1
-SPDX-PackageName = "FVNeverDotNetTemplate"
+SPDX-PackageName = "FVNever.AppDirs"
 SPDX-PackageSupplier = "Friedrich von Never <friedrich@fornever.me>"
 SPDX-PackageDownloadLocation = "https://github.com/ForNeVeR/dotnet-repo-template"
 

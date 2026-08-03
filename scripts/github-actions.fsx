@@ -171,7 +171,7 @@ let workflows = [
                 name = "Upload artifacts",
                 usesSpec = Auto "actions/upload-artifact",
                 options = Map.ofList [
-                    "path", "./release-notes.md\n./FVNeverDotNetTemplate/bin/Release/FVNeverDotNetTemplate.${{ steps.version.outputs.version }}.nupkg\n./FVNeverDotNetTemplate/bin/Release/FVNeverDotNetTemplate.${{ steps.version.outputs.version }}.snupkg"
+                    "path", "./release-notes.md\n./FVNever.AppDirs/bin/Release/FVNever.AppDirs.${{ steps.version.outputs.version }}.nupkg\n./FVNever.AppDirs/bin/Release/FVNever.AppDirs.${{ steps.version.outputs.version }}.snupkg"
                 ]
             )
             step(
@@ -180,14 +180,14 @@ let workflows = [
                 usesSpec = Auto "softprops/action-gh-release",
                 options = Map.ofList [
                     "body_path", "./release-notes.md"
-                    "files", "./FVNeverDotNetTemplate/bin/Release/FVNeverDotNetTemplate.${{ steps.version.outputs.version }}.nupkg\n./FVNeverDotNetTemplate/bin/Release/FVNeverDotNetTemplate.${{ steps.version.outputs.version }}.snupkg"
-                    "name", "FVNeverDotNetTemplate v${{ steps.version.outputs.version }}"
+                    "files", "./FVNever.AppDirs/bin/Release/FVNever.AppDirs.${{ steps.version.outputs.version }}.nupkg\n./FVNever.AppDirs/bin/Release/FVNever.AppDirs.${{ steps.version.outputs.version }}.snupkg"
+                    "name", "FVNever.AppDirs v${{ steps.version.outputs.version }}"
                 ]
             )
             step(
                 condition = "startsWith(github.ref, 'refs/tags/v')",
                 name = "Push artifact to NuGet",
-                run = "dotnet nuget push ./FVNeverDotNetTemplate/bin/Release/FVNeverDotNetTemplate.${{ steps.version.outputs.version }}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_TOKEN }}"
+                run = "dotnet nuget push ./FVNever.AppDirs/bin/Release/FVNever.AppDirs.${{ steps.version.outputs.version }}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_TOKEN }}"
             )
         ]
     ]

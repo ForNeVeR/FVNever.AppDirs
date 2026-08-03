@@ -4,7 +4,7 @@
     <File Path=".config\dotnet-tools.json.license" />
   </Folder>
   <Folder Name="/.github/">
-    <File Path=".github\README.md" />
+    
   </Folder>
   <Folder Name="/.github/workflows/">
     <File Path=".github\workflows\main.yml" />
@@ -21,7 +21,7 @@
     <File Path="LICENSES\MIT.txt" />
   </Folder>
   <Folder Name="/scripts/">
-    <File Path="scripts/Initiate.ps1" />
+    
     <File Path="scripts\Get-Version.ps1" />
     <File Path="scripts\github-actions.fsx" />
   </Folder>
@@ -29,7 +29,7 @@
     <File Path=".gitignore" />
     <File Path=".editorconfig" />
     <File Path="Directory.Packages.props" />
-    <File Path="FVNeverDotNetTemplate.slnx.license" />
+    <File Path="FVNever.AppDirs.slnx.license" />
     <File Path="renovate.json" />
     <File Path="renovate.json.license" />
     <File Path="Directory.Build.props" />
@@ -42,5 +42,5 @@
     <File Path="global.json" />
     <File Path="global.json.license" />
   </Folder>
-  <Project Path="FVNeverDotNetTemplate\FVNeverDotNetTemplate.csproj" />
+  <Project Path="FVNever.AppDirs\FVNever.AppDirs.csproj" />
 </Solution>

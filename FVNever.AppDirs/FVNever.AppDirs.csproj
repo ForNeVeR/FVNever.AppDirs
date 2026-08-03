@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-      <PackageDescription>FVNeverDotNetTemplate Description.</PackageDescription>
+      <PackageDescription>FVNever.AppDirs Description.</PackageDescription>
       <IsPackable>true</IsPackable>
   </PropertyGroup>
 

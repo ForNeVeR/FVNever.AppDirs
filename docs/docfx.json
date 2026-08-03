@@ -5,7 +5,7 @@
                 {
                     "src": "..",
                     "files": [
-                        "FVNeverDotNetTemplate/FVNeverDotNetTemplate.csproj"
+                        "FVNever.AppDirs/FVNever.AppDirs.csproj"
                     ]
                 }
             ],
@@ -36,8 +36,8 @@
             "modern"
         ],
         "globalMetadata": {
-            "_appName": "FVNeverDotNetTemplate",
-            "_appTitle": "FVNeverDotNetTemplate",
+            "_appName": "FVNever.AppDirs",
+            "_appTitle": "FVNever.AppDirs",
             "_enableSearch": true,
             "pdf": false
         }
