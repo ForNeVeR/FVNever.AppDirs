@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-      <PackageDescription>FVNever.AppDirs Description.</PackageDescription>
+      <PackageDescription>A .NET library providing XDG-like base-directory resolution for application config, data, cache, and state directories in a cross-platform way.</PackageDescription>
       <IsPackable>true</IsPackable>
   </PropertyGroup>
 

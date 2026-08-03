@@ -10,4 +10,4 @@ SPDX-License-Identifier: MIT
 
 FVNever.AppDirs
 ============
-FVNever.AppDirsDescription
+A .NET library providing XDG-like base-directory resolution for application config, data, cache, and state directories in a cross-platform way.
