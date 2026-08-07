@@ -49,13 +49,13 @@ The constructor also accepts optional identity data that shapes the per-OS paths
 var dirs = new ApplicationDirectories(
     "MyApp",
     vendorName: "Acme",
-    macOSBundleIdentifier: "com.acme.MyApp",
+    macOsBundleIdentifier: "com.acme.MyApp",
     allowCompatMode: true);
 ```
 
 - `vendorName` (optional): used as an intermediate path segment on Windows and to reconstruct the macOS bundle identifier in compatibility mode. It is ignored on Linux.
-- `macOSBundleIdentifier` (optional): used verbatim as the macOS `Application Support` segment.
-- `allowCompatMode` (optional): when no explicit `macOSBundleIdentifier` is supplied, permits reconstructing it as `<Vendor>.<App>` (or `<App>`); otherwise macOS resolution throws instead of guessing.
+- `macOsBundleIdentifier` (optional): used verbatim as the macOS `Application Support` segment.
+- `allowCompatMode` (optional): when no explicit `macOsBundleIdentifier` is supplied, permits reconstructing it as `<Vendor>.<App>` (or `<App>`); otherwise macOS resolution throws instead of guessing.
 
 ## Per-OS state mapping
 
@@ -85,7 +85,7 @@ On **Windows**, when `VendorName` is set it becomes an intermediate segment (`<L
 
 On **macOS**, the `<id>` segment is resolved as follows:
 
-- if `MacOSBundleIdentifier` is set, it is used verbatim;
+- if `MacOsBundleIdentifier` is set, it is used verbatim;
 - otherwise, when `AllowCompatMode` is enabled, the identifier is reconstructed as `<Vendor>.<App>` (or `<App>` when no vendor is given);
 - otherwise resolution throws (see the fail-fast section below), because AppDirs never guesses the identifier when compatibility mode is disabled.
 
@@ -98,7 +98,7 @@ Some of the paths are differently mapped on different operating systems: say, th
 
 When mapping these on Windows, where we only have two base paths (`%APPDATA%` and `%LOCALAPPDATA%`), we inevitably will have to make some compromise. **AppDirs** makes a choice to store the data paths in a nested manner: for example, since Windows has no separate concept of the **state directory**, the application's state data will be stored in `%LOCALAPPDATA%\AppName\.state`.
 
-Which leads to the following issue: whet if your application obtains the path to the `%LOCALAPPDATA%\AppName` and wants to store **its own** entry with the name `.state`? This would lead to a directory conflict and possible data corruption.
+Which leads to the following issue: what if your application obtains the path to the `%LOCALAPPDATA%\AppName` and wants to store **its own** entry with the name `.state`? This would lead to a directory conflict and possible data corruption.
 
 **AppDirs** resolves this conundrum by introducing two concepts: **base** and **leaf** directories.
 
@@ -116,7 +116,7 @@ Resolution is pure and performs no filesystem I/O, and it **never** falls back t
 
 - on Linux, a missing `$HOME` (when the relevant `XDG_STATE_HOME` / `XDG_CONFIG_HOME` is also absent or relative) throws an `InvalidOperationException`.
 - on macOS / Windows, an empty, relative or otherwise unresolvable special-folder value throws an `InvalidOperationException`.
-- on macOS, a disabled compatibility mode combined with a missing `MacOSBundleIdentifier` prevents us from guessing the macOS package identifier, and therefore throws an `InvalidOperationException`.
+- on macOS, a disabled compatibility mode combined with a missing `MacOsBundleIdentifier` prevents us from guessing the macOS package identifier, and therefore throws an `InvalidOperationException`.
 
 ```csharp
 try

@@ -44,7 +44,7 @@ You can also supply optional identity data to shape the per-OS paths:
 var dirs = new ApplicationDirectories(
     "MyApp",
     vendorName: "Acme",
-    macOSBundleIdentifier: "com.acme.MyApp",
+    macOsBundleIdentifier: "com.acme.MyApp",
     allowCompatMode: true);
 AbsolutePath state = dirs.StateDirectory();
 // Windows: %LOCALAPPDATA%\Acme\MyApp\.state       (vendorName is an intermediate segment)
