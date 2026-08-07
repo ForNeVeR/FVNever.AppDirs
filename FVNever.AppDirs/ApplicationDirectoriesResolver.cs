@@ -18,17 +18,46 @@ internal static class ApplicationDirectoriesResolver
 {
     /// <summary>Resolves the application state directory (a leaf directory).</summary>
     /// <param name="environment">The operating system and environment to map against.</param>
-    /// <param name="applicationName">The application name, used verbatim as a path segment.</param>
-    public static AbsolutePath ResolveStateDirectory(ISystemEnvironment environment, string applicationName) =>
+    /// <param name="identity">The application identity data driving the per-OS mapping.</param>
+    /// <remarks>
+    /// On Windows, <see cref="ApplicationIdentity.VendorName"/> (when set) is inserted as an intermediate segment.
+    /// On macOS, the Application Support segment is <see cref="ApplicationIdentity.MacOsBundleIdentifier"/> when set;
+    /// otherwise, if <see cref="ApplicationIdentity.AllowCompatMode"/> is enabled, it is reconstructed as
+    /// <c>&lt;Vendor&gt;.&lt;App&gt;</c> (or <c>&lt;App&gt;</c> without a vendor); otherwise resolution throws.
+    /// Linux ignores the vendor and bundle identifier.
+    /// </remarks>
+    public static AbsolutePath ResolveStateDirectory(ISystemEnvironment environment, ApplicationIdentity identity) =>
         environment.OperatingSystem switch
         {
-            OperatingSystemKind.Linux => ResolveLinuxState(environment, applicationName),
+            OperatingSystemKind.Linux => ResolveLinuxState(environment, identity.AppName),
             OperatingSystemKind.MacOs =>
-                environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) / applicationName / ".state",
+                environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+                    / ResolveMacOsBundleIdentifier(identity) / ".state",
             OperatingSystemKind.Windows =>
-                environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) / applicationName / ".state",
+                ResolveWindowsAppBase(environment, identity) / ".state",
             var other => throw new PlatformNotSupportedException($"Unsupported operating system: {other}.")
         };
+
+    /// <summary>
+    /// Windows application base: <c>&lt;LocalApplicationData&gt;\&lt;Vendor&gt;\&lt;App&gt;</c> when a vendor is set,
+    /// otherwise <c>&lt;LocalApplicationData&gt;\&lt;App&gt;</c>.
+    /// </summary>
+    private static AbsolutePath ResolveWindowsAppBase(ISystemEnvironment environment, ApplicationIdentity identity)
+    {
+        var baseDir = environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return identity.VendorName is { } vendor ? baseDir / vendor / identity.AppName : baseDir / identity.AppName;
+    }
+
+    /// <summary>
+    /// The macOS bundle identifier segment: the explicit identifier when set; otherwise, in compatibility mode,
+    /// <c>&lt;Vendor&gt;.&lt;App&gt;</c> (or <c>&lt;App&gt;</c> without a vendor); otherwise resolution throws.
+    /// </summary>
+    private static string ResolveMacOsBundleIdentifier(ApplicationIdentity identity) =>
+        identity.MacOsBundleIdentifier
+        ?? (identity.AllowCompatMode
+            ? identity.VendorName is { } vendor ? $"{vendor}.{identity.AppName}" : identity.AppName
+            : throw new InvalidOperationException(
+                "Cannot determine the macOS bundle identifier: provide a macOS bundle identifier or enable compatibility mode."));
 
     /// <summary>
     /// Linux state directory per the XDG Base Directory specification: <c>$XDG_STATE_HOME/&lt;App&gt;</c> when

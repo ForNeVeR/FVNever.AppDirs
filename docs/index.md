@@ -37,17 +37,39 @@ AbsolutePath state = dirs.StateDirectory;
 Console.WriteLine(state); // e.g. C:\Users\me\AppData\Local\MyApp\.state on Windows
 ```
 
+The constructor also accepts optional identity data that shapes the per-OS paths:
+
+```csharp
+var dirs = new ApplicationDirectories(
+    "MyApp",
+    vendorName: "Acme",
+    macOSBundleIdentifier: "com.acme.MyApp",
+    allowCompatMode: true);
+```
+
+- `vendorName` (optional): used as an intermediate path segment on Windows and to reconstruct the macOS bundle identifier in compatibility mode. It is ignored on Linux.
+- `macOSBundleIdentifier` (optional): used verbatim as the macOS `Application Support` segment.
+- `allowCompatMode` (optional): when no explicit `macOSBundleIdentifier` is supplied, permits reconstructing it as `<Vendor>.<App>` (or `<App>`); otherwise macOS resolution throws instead of guessing.
+
 ## Per-OS state mapping
 
 `StateDirectory` resolves as follows:
 
-| OS      | State directory                                                                                         |
-|---------|---------------------------------------------------------------------------------------------------------|
-| Linux   | `$XDG_STATE_HOME/<App>` when `XDG_STATE_HOME` is an absolute path, otherwise `$HOME/.local/state/<App>` |
-| macOS   | `<Application Support>/<App>/.state`                                                                    |
-| Windows | `<LocalApplicationData>\<App>\.state`                                                                   |
+| OS      | State directory                                                                                                          |
+|---------|--------------------------------------------------------------------------------------------------------------------------|
+| Linux   | `$XDG_STATE_HOME/<App>` when `XDG_STATE_HOME` is an absolute path, otherwise `$HOME/.local/state/<App>`                  |
+| macOS   | `<Application Support>/<id>/.state`, where `<id>` is the bundle identifier (see below)                                   |
+| Windows | `<LocalApplicationData>\<Vendor>\<App>\.state` when `VendorName` is set, otherwise `<LocalApplicationData>\<App>\.state` |
 
 On macOS the `Application Support` base and on Windows the `LocalApplicationData` base are obtained through the .NET system API (`Environment.GetFolderPath(..., SpecialFolderOption.DoNotVerify)`) rather than assembled by hand, so sandboxed, containerized or relocated installations resolve correctly. Per the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/), a relative `XDG_STATE_HOME` is ignored and the `$HOME`-based default is used instead.
+
+On **Windows**, when `VendorName` is set it becomes an intermediate segment (`<LocalApplicationData>\<Vendor>\<App>\.state`), grouping the application under the vendor folder; otherwise it is omitted. This is independent of `AllowCompatMode`.
+
+On **macOS**, the `<id>` segment is resolved as follows:
+
+- if `MacOSBundleIdentifier` is set, it is used verbatim;
+- otherwise, when `AllowCompatMode` is enabled, the identifier is reconstructed as `<Vendor>.<App>` (or `<App>` when no vendor is given);
+- otherwise resolution throws (see the fail-fast section below), because AppDirs never guesses the identifier when compatibility mode is disabled.
 
 ## Leaf directories vs. base directories
 
@@ -75,7 +97,8 @@ Note that to be absolutely safe, you should never use entry names that start fro
 Resolution is pure and performs no filesystem I/O, and it **never** falls back to the current working directory (unlike `Environment.GetFolderPath` .NET API). If a required base cannot be determined as a rooted absolute path, the corresponding member throws instead of trying to guess or resolve the folder. For example,
 
 - on Linux, a missing `$HOME` (when `XDG_STATE_HOME` is also absent or relative) throws an `InvalidOperationException`.
-- on macOS / Windows, an empty, relative or otherwise unresolvable special-folder value (for example when a disabled compatibility mode prevents us from guessing the macOS package identifier) throws an `InvalidOperationException`.
+- on macOS / Windows, an empty, relative or otherwise unresolvable special-folder value throws an `InvalidOperationException`.
+- on macOS, a disabled compatibility mode combined with a missing `MacOSBundleIdentifier` prevents us from guessing the macOS package identifier, and therefore throws an `InvalidOperationException`.
 
 ```csharp
 try

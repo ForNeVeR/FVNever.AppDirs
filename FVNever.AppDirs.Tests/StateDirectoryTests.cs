@@ -55,19 +55,56 @@ public class StateDirectoryTests
     }
 
     [Test]
-    public async Task MacOs_UsesApplicationSupportBaseWithDotState()
+    public async Task MacOs_ExplicitBundleIdentifier_UsesItUnderApplicationSupport()
     {
         var appSupport = HostAbsolute("Application Support");
         var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
             .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
 
-        var actual = new ApplicationDirectories(AppName, env).StateDirectory;
+        // An explicit bundle identifier wins regardless of the compatibility flag.
+        var actual = new ApplicationDirectories(AppName, env, macOsBundleIdentifier: "com.acme.MyApp").StateDirectory;
+
+        await Assert.That(actual).IsEqualTo(appSupport / "com.acme.MyApp" / ".state");
+    }
+
+    [Test]
+    public async Task MacOs_CompatModeWithVendor_ReconstructsIdentifier()
+    {
+        var appSupport = HostAbsolute("Application Support");
+        var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
+            .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
+
+        var actual = new ApplicationDirectories(AppName, env, vendorName: "Acme", allowCompatMode: true).StateDirectory;
+
+        await Assert.That(actual).IsEqualTo(appSupport / "Acme.MyApp" / ".state");
+    }
+
+    [Test]
+    public async Task MacOs_CompatModeWithoutVendor_UsesAppName()
+    {
+        var appSupport = HostAbsolute("Application Support");
+        var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
+            .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
+
+        var actual = new ApplicationDirectories(AppName, env, allowCompatMode: true).StateDirectory;
 
         await Assert.That(actual).IsEqualTo(appSupport / AppName / ".state");
     }
 
     [Test]
-    public async Task Windows_UsesLocalAppDataBaseWithDotState()
+    public async Task MacOs_NoBundleIdentifierAndCompatDisabled_Throws()
+    {
+        var appSupport = HostAbsolute("Application Support");
+        var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
+            .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
+
+        // Compat mode disabled and no explicit identifier: fail fast rather than guessing.
+        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory)
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task Windows_WithoutVendor_UsesLocalAppDataBaseWithDotState()
     {
         var localAppData = HostAbsolute("LocalAppData");
         var env = new FakeSystemEnvironment(OperatingSystemKind.Windows)
@@ -76,6 +113,30 @@ public class StateDirectoryTests
         var actual = new ApplicationDirectories(AppName, env).StateDirectory;
 
         await Assert.That(actual).IsEqualTo(localAppData / AppName / ".state");
+    }
+
+    [Test]
+    public async Task Windows_WithVendor_InsertsVendorSegment()
+    {
+        var localAppData = HostAbsolute("LocalAppData");
+        var env = new FakeSystemEnvironment(OperatingSystemKind.Windows)
+            .WithSpecialFolder(Environment.SpecialFolder.LocalApplicationData, localAppData);
+
+        var actual = new ApplicationDirectories(AppName, env, vendorName: "Acme").StateDirectory;
+
+        await Assert.That(actual).IsEqualTo(localAppData / "Acme" / AppName / ".state");
+    }
+
+    [Test]
+    public async Task Linux_IgnoresVendorAndBundleIdentifier()
+    {
+        var home = HostAbsolute("home");
+        var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = home };
+
+        var actual = new ApplicationDirectories(
+            AppName, env, vendorName: "Acme", macOsBundleIdentifier: "com.acme.MyApp", allowCompatMode: true).StateDirectory;
+
+        await Assert.That(actual).IsEqualTo(home / ".local" / "state" / AppName);
     }
 
     // -------------------- Application-name edge cases --------------------
@@ -109,6 +170,24 @@ public class StateDirectoryTests
         await Assert.That(() => new ApplicationDirectories(appName, env)).Throws<ArgumentException>();
     }
 
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
+    public async Task WhitespaceVendorName_Throws(string vendorName)
+    {
+        var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = HostAbsolute("home") };
+        await Assert.That(() => new ApplicationDirectories(AppName, env, vendorName: vendorName)).Throws<ArgumentException>();
+    }
+
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
+    public async Task WhitespaceMacOSBundleIdentifier_Throws(string bundleId)
+    {
+        var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = HostAbsolute("home") };
+        await Assert.That(() => new ApplicationDirectories(AppName, env, macOsBundleIdentifier: bundleId)).Throws<ArgumentException>();
+    }
+
     // -------------------- Fail-fast / never-CWD --------------------
 
     [Test]
@@ -123,9 +202,9 @@ public class StateDirectoryTests
     [Test]
     public async Task MacOs_UnresolvableApplicationSupport_Throws()
     {
-        // Special folder not configured emulates an unresolvable value (e.g. compat mode disabled).
+        // Special folder not configured emulates an unresolvable value; compat mode enabled so the failure is the base.
         var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs);
-        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory)
+        await Assert.That(() => new ApplicationDirectories(AppName, env, allowCompatMode: true).StateDirectory)
             .Throws<InvalidOperationException>();
     }
 
@@ -145,7 +224,8 @@ public class StateDirectoryTests
         // Convention: no leaf directory may be an ancestor of (or equal to) another leaf on any OS.
         foreach (var os in new[] { OperatingSystemKind.Linux, OperatingSystemKind.MacOs, OperatingSystemKind.Windows })
         {
-            var dirs = new ApplicationDirectories(AppName, FullyConfiguredEnvironment(os));
+            // Enable compat mode so macOS can resolve an identifier for the invariant check.
+            var dirs = new ApplicationDirectories(AppName, FullyConfiguredEnvironment(os), allowCompatMode: true);
             var leaves = EnumerateLeafDirectories(dirs);
 
             foreach (var a in leaves)
@@ -198,7 +278,7 @@ public class StateDirectoryTests
     {
         if (!OperatingSystem.IsMacOS()) return;
 
-        var state = new ApplicationDirectories(AppName).StateDirectory;
+        var state = new ApplicationDirectories(AppName, allowCompatMode: true).StateDirectory;
         var appSupport = new AbsolutePath(Environment.GetEnvironmentVariable("HOME")!) / "Application Support";
 
         await Assert.That(state).IsEqualTo(appSupport / AppName / ".state");

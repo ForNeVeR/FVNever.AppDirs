@@ -26,7 +26,7 @@ namespace FVNever.AppDirs;
 /// </remarks>
 public sealed class ApplicationDirectories
 {
-    private readonly string _applicationName;
+    private readonly ApplicationIdentity _identity;
     private readonly ISystemEnvironment _environment;
 
     /// <summary>
@@ -36,10 +36,30 @@ public sealed class ApplicationDirectories
     /// The application name, used verbatim as a path segment. Must not be <see langword="null"/>, empty or
     /// whitespace.
     /// </param>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="applicationName"/> is empty or whitespace.</exception>
+    /// <param name="vendorName">
+    /// An optional vendor name. When set, it is used as an intermediate path segment on Windows
+    /// (<c>&lt;LocalApplicationData&gt;\&lt;Vendor&gt;\&lt;App&gt;\.state</c>) and to reconstruct the macOS bundle
+    /// identifier in compatibility mode. Must not be empty or whitespace when non-<see langword="null"/>.
+    /// </param>
+    /// <param name="macOsBundleIdentifier">
+    /// An optional explicit macOS bundle identifier. When set, it is used verbatim as the Application Support path
+    /// segment on macOS. Must not be empty or whitespace when non-<see langword="null"/>.
+    /// </param>
+    /// <param name="allowCompatMode">
+    /// When <see langword="true"/>, permits reconstructing the macOS bundle identifier from the available data
+    /// (<c>&lt;Vendor&gt;.&lt;App&gt;</c> or <c>&lt;App&gt;</c>) when <paramref name="macOsBundleIdentifier"/> is not
+    /// supplied. When <see langword="false"/>, macOS resolution throws instead of guessing the identifier.
+    /// </param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="applicationName"/> is empty or whitespace, or
+    /// when <paramref name="vendorName"/> / <paramref name="macOsBundleIdentifier"/> is non-<see langword="null"/> but
+    /// empty or whitespace.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="applicationName"/> is <see langword="null"/>.</exception>
-    public ApplicationDirectories(string applicationName)
-        : this(applicationName, SystemEnvironment.Instance)
+    public ApplicationDirectories(
+        string applicationName,
+        string? vendorName = null,
+        string? macOsBundleIdentifier = null,
+        bool allowCompatMode = false)
+        : this(applicationName, SystemEnvironment.Instance, vendorName, macOsBundleIdentifier, allowCompatMode)
     {
     }
 
@@ -47,7 +67,12 @@ public sealed class ApplicationDirectories
     /// Creates an instance that resolves directories against a substituted operating system and environment.
     /// Used by tests to verify cross-platform mappings from any host.
     /// </summary>
-    internal ApplicationDirectories(string applicationName, ISystemEnvironment environment)
+    internal ApplicationDirectories(
+        string applicationName,
+        ISystemEnvironment environment,
+        string? vendorName = null,
+        string? macOsBundleIdentifier = null,
+        bool allowCompatMode = false)
     {
         ArgumentNullException.ThrowIfNull(applicationName);
         if (string.IsNullOrWhiteSpace(applicationName))
@@ -55,8 +80,23 @@ public sealed class ApplicationDirectories
             throw new ArgumentException("The application name must not be empty or whitespace.", nameof(applicationName));
         }
 
-        _applicationName = applicationName;
+        ValidateOptional(vendorName, nameof(vendorName));
+        ValidateOptional(macOsBundleIdentifier, nameof(macOsBundleIdentifier));
+
+        _identity = new ApplicationIdentity(applicationName, vendorName, macOsBundleIdentifier, allowCompatMode);
         _environment = environment;
+    }
+
+    /// <summary>
+    /// Rejects a non-<see langword="null"/> optional string argument that is empty or whitespace; <see langword="null"/>
+    /// remains a valid value.
+    /// </summary>
+    private static void ValidateOptional(string? value, string parameterName)
+    {
+        if (value is not null && string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException($"The {parameterName} must not be empty or whitespace when specified.", parameterName);
+        }
     }
 
     /// <summary>
@@ -85,5 +125,5 @@ public sealed class ApplicationDirectories
     /// missing <c>$HOME</c> or an unresolvable special folder). The current working directory is never used.
     /// </exception>
     public AbsolutePath StateDirectory =>
-        ApplicationDirectoriesResolver.ResolveStateDirectory(_environment, _applicationName);
+        ApplicationDirectoriesResolver.ResolveStateDirectory(_environment, _identity);
 }

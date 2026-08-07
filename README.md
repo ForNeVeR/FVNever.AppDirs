@@ -27,9 +27,28 @@ using FVNever.AppDirs;
 var dirs = new ApplicationDirectories("MyApp");
 AbsolutePath state = dirs.StateDirectory;
 // Windows: %LOCALAPPDATA%\MyApp\.state
-// macOS:   ~/Library/Application Support/MyApp/.state
+// macOS:   throws unless a bundle identifier or compatibility mode is supplied (see below)
 // Linux:   $XDG_STATE_HOME/MyApp (or ~/.local/state/MyApp)
 ```
+
+You can also supply optional identity data to shape the per-OS paths:
+
+```csharp
+var dirs = new ApplicationDirectories(
+    "MyApp",
+    vendorName: "Acme",
+    macOSBundleIdentifier: "com.acme.MyApp",
+    allowCompatMode: true);
+AbsolutePath state = dirs.StateDirectory;
+// Windows: %LOCALAPPDATA%\Acme\MyApp\.state       (vendorName is an intermediate segment)
+// macOS:   ~/Library/Application Support/com.acme.MyApp/.state
+```
+
+- `vendorName` (optional): used as an intermediate path segment on Windows, and to reconstruct the macOS bundle identifier in compatibility mode.
+- `macOsBundleIdentifier` (optional): used verbatim as the macOS Application Support segment.
+- `allowCompatMode` (optional): when no explicit `macOsBundleIdentifier` is given, reconstructs it as `<Vendor>.<App>` (or `<App>`); otherwise macOS resolution throws instead of guessing.
+
+All three inputs are ignored on Linux.
 
 `StateDirectory` is a **leaf** directory: a location your application writes into directly. AppDirs guarantees no leaf directory contains another AppDirs-generated leaf on any OS. See the [documentation site][docs] for larger examples and the full explanation of the leaf/base convention and the fail-fast behavior.
 
