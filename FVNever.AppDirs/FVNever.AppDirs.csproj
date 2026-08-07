@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2025 Friedrich von Never <friedrich@fornever.me>
+SPDX-FileCopyrightText: 2025-2026 Friedrich von Never <friedrich@fornever.me>
 
 SPDX-License-Identifier: MIT
 -->
@@ -16,5 +16,13 @@ SPDX-License-Identifier: MIT
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TruePath" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FVNever.AppDirs.Tests" />
+  </ItemGroup>
 
 </Project>

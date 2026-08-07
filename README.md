@@ -8,6 +8,38 @@ FVNever.AppDirs [![Status Zero][status-zero]][andivionian-status-classifier] [![
 ========
 A .NET library providing XDG-like base-directory resolution for application config, data, cache, and state directories in a cross-platform way.
 
+Motivation
+----------
+Many applications need to store files that outlive a single run — logs, command history, recent-files lists, window layout — but the _correct_ place for them is different on each operating system, and encoded in platform-specific conventions that are easy to get subtly wrong. **FVNever.AppDirs** encapsulates these conventions so that you never assemble platform paths by hand.
+
+Different ecosystems have different conventions on where to store different kinds of data:
+- Linux has [XDG Base Directory Specification][spec.xdg],
+- Windows provides [Known Folders][spec.windows],
+- macOS documents its [Standard Directories][spec.macos].
+
+This library brings access to these standards from .NET, in a portable manner (so you can find a location for any supported kind of data for every supported operating system).
+
+Usage
+-----
+```csharp
+using FVNever.AppDirs;
+
+var dirs = new ApplicationDirectories("MyApp");
+AbsolutePath state = dirs.StateDirectory;
+// Windows: %LOCALAPPDATA%\MyApp\.state
+// macOS:   ~/Library/Application Support/MyApp/.state
+// Linux:   $XDG_STATE_HOME/MyApp (or ~/.local/state/MyApp)
+```
+
+`StateDirectory` is a **leaf** directory: a location your application writes into directly. AppDirs guarantees no leaf directory contains another AppDirs-generated leaf on any OS. See the [documentation site][docs] for larger examples and the full explanation of the leaf/base convention and the fail-fast behavior.
+
+References
+----------
+The per-OS mappings follow the authoritative platform conventions:
+- [XDG Base Directory Specification][spec.xdg] (Linux)
+- [Known Folders][spec.windows] (Windows)
+- [macOS Standard Directories][spec.macos] (macOS)
+
 Documentation
 -------------
 - [Project Documentation Site (API Reference)][docs]
@@ -22,13 +54,17 @@ The project is distributed under the terms of [the MIT license][docs.license].
 The license indication in the project's sources is compliant with the [REUSE specification v3.3][reuse.spec].
 
 [andivionian-status-classifier]: https://andivionian.fornever.me/v1/#status-zero-
-[status-zero]: https://img.shields.io/badge/status-zero-lightgrey.svg
-[nuget.badge]: https://img.shields.io/nuget/v/FVNever.AppDirs
-[nuget]: https://www.nuget.org/packages/FVNever.AppDirs
-[reuse]: https://reuse.software/
-[docs]: https://ForNeVeR.github.io/FVNever.AppDirs
 [docs.changelog]: CHANGELOG.md
 [docs.contributing]: CONTRIBUTING.md
 [docs.license]: LICENSE.txt
 [docs.maintaining]: MAINTAINING.md
+[docs]: https://ForNeVeR.github.io/FVNever.AppDirs
+[nuget.badge]: https://img.shields.io/nuget/v/FVNever.AppDirs
+[nuget]: https://www.nuget.org/packages/FVNever.AppDirs
 [reuse.spec]: https://reuse.software/spec-3.3/
+[reuse]: https://reuse.software/
+[spec.macos]: https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/MacOSXDirectories/MacOSXDirectories.html
+[spec.windows]: https://learn.microsoft.com/en-us/windows/win32/shell/known-folders
+[spec.xdg]: https://specifications.freedesktop.org/basedir/latest/
+[status-zero]: https://img.shields.io/badge/status-zero-lightgrey.svg
+[truepath]: https://github.com/ForNeVeR/TruePath

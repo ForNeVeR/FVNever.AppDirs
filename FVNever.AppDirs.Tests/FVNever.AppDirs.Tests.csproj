@@ -1,0 +1,26 @@
+<!--
+SPDX-FileCopyrightText: 2026 Friedrich von Never <friedrich@fornever.me>
+
+SPDX-License-Identifier: MIT
+-->
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="TruePath" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FVNever.AppDirs\FVNever.AppDirs.csproj" />
+  </ItemGroup>
+
+</Project>

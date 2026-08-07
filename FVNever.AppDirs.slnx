@@ -43,4 +43,5 @@
     <File Path="global.json.license" />
   </Folder>
   <Project Path="FVNever.AppDirs\FVNever.AppDirs.csproj" />
+  <Project Path="FVNever.AppDirs.Tests\FVNever.AppDirs.Tests.csproj" />
 </Solution>
