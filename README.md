@@ -25,11 +25,18 @@ Usage
 using FVNever.AppDirs;
 
 var dirs = new ApplicationDirectories("MyApp");
-AbsolutePath state = dirs.StateDirectory;
+AbsolutePath state = dirs.StateDirectory();
 // Windows: %LOCALAPPDATA%\MyApp\.state
 // macOS:   throws unless a bundle identifier or compatibility mode is supplied (see below)
 // Linux:   $XDG_STATE_HOME/MyApp (or ~/.local/state/MyApp)
+
+AbsolutePath roamable = dirs.StateDirectory(roamable: true);
+// Windows: %APPDATA%\MyApp\.state (the Roaming profile)
+// macOS:   throws unless a bundle identifier or compatibility mode is supplied (see below)
+// Linux:   $XDG_CONFIG_HOME/MyApp/.roamableState (or ~/.config/MyApp/.roamableState)
 ```
+
+`StateDirectory` is a method taking an optional `bool roamable = false`. The default (`roamable: false`) resolves a machine-local, non-roaming location; `roamable: true` resolves a location intended to roam or sync between machines (for example the Windows Roaming profile).
 
 You can also supply optional identity data to shape the per-OS paths:
 
@@ -39,7 +46,7 @@ var dirs = new ApplicationDirectories(
     vendorName: "Acme",
     macOSBundleIdentifier: "com.acme.MyApp",
     allowCompatMode: true);
-AbsolutePath state = dirs.StateDirectory;
+AbsolutePath state = dirs.StateDirectory();
 // Windows: %LOCALAPPDATA%\Acme\MyApp\.state       (vendorName is an intermediate segment)
 // macOS:   ~/Library/Application Support/com.acme.MyApp/.state
 ```
@@ -50,7 +57,7 @@ AbsolutePath state = dirs.StateDirectory;
 
 All three inputs are ignored on Linux.
 
-`StateDirectory` is a **leaf** directory: a location your application writes into directly. AppDirs guarantees no leaf directory contains another AppDirs-generated leaf on any OS. See the [documentation site][docs] for larger examples and the full explanation of the leaf/base convention and the fail-fast behavior.
+Both variants of `StateDirectory` return a **leaf** directory: a location your application writes into directly. AppDirs guarantees no leaf directory contains another AppDirs-generated leaf on any OS. See the [documentation site][docs] for larger examples and the full explanation of the leaf/base convention and the fail-fast behavior.
 
 References
 ----------

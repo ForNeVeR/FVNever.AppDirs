@@ -33,9 +33,15 @@ using TruePath;
 
 var dirs = new ApplicationDirectories("MyApp");
 
-AbsolutePath state = dirs.StateDirectory;
+AbsolutePath state = dirs.StateDirectory();
 Console.WriteLine(state); // e.g. C:\Users\me\AppData\Local\MyApp\.state on Windows
+
+// Pass roamable: true to request a location intended to roam or sync between machines:
+AbsolutePath roamable = dirs.StateDirectory(roamable: true);
+Console.WriteLine(roamable); // e.g. C:\Users\me\AppData\Roaming\MyApp\.state on Windows
 ```
+
+`StateDirectory` is a method with an optional `bool roamable = false` parameter. The default resolves a machine-local, non-roaming location; `roamable: true` resolves a location intended to roam or sync between machines (for example the Windows Roaming profile).
 
 The constructor also accepts optional identity data that shapes the per-OS paths:
 
@@ -53,7 +59,9 @@ var dirs = new ApplicationDirectories(
 
 ## Per-OS state mapping
 
-`StateDirectory` resolves as follows:
+`StateDirectory(bool roamable = false)` resolves as follows.
+
+Non-roamable (`roamable: false`, the default):
 
 | OS      | State directory                                                                                                          |
 |---------|--------------------------------------------------------------------------------------------------------------------------|
@@ -61,9 +69,19 @@ var dirs = new ApplicationDirectories(
 | macOS   | `<Application Support>/<id>/.state`, where `<id>` is the bundle identifier (see below)                                   |
 | Windows | `<LocalApplicationData>\<Vendor>\<App>\.state` when `VendorName` is set, otherwise `<LocalApplicationData>\<App>\.state` |
 
-On macOS the `Application Support` base and on Windows the `LocalApplicationData` base are obtained through the .NET system API (`Environment.GetFolderPath(..., SpecialFolderOption.DoNotVerify)`) rather than assembled by hand, so sandboxed, containerized or relocated installations resolve correctly. Per the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/), a relative `XDG_STATE_HOME` is ignored and the `$HOME`-based default is used instead.
+Roamable (`roamable: true`):
 
-On **Windows**, when `VendorName` is set it becomes an intermediate segment (`<LocalApplicationData>\<Vendor>\<App>\.state`), grouping the application under the vendor folder; otherwise it is omitted. This is independent of `AllowCompatMode`.
+| OS      | State directory                                                                                                                      |
+|---------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Linux   | `$XDG_CONFIG_HOME/<App>/.roamableState` when `XDG_CONFIG_HOME` is an absolute path, otherwise `$HOME/.config/<App>/.roamableState`   |
+| macOS   | `<Application Support>/<id>/.roamableState`, where `<id>` is the bundle identifier (see below)                                       |
+| Windows | `<ApplicationData>\<Vendor>\<App>\.state` when `VendorName` is set, otherwise `<ApplicationData>\<App>\.state` (the Roaming profile) |
+
+XDG has no native roaming concept, so on Linux the roamable variant is placed under the configuration base (`$XDG_CONFIG_HOME`) — the bucket users most commonly sync or back up.
+
+On macOS the `Application Support` base and on Windows the `LocalApplicationData` / `ApplicationData` (Roaming) bases are obtained through the .NET system API (`Environment.GetFolderPath(..., SpecialFolderOption.DoNotVerify)`) rather than assembled by hand, so sandboxed, containerized or relocated installations resolve correctly. Per the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/), a relative `XDG_STATE_HOME` (or `XDG_CONFIG_HOME`) is ignored and the `$HOME`-based default is used instead.
+
+On **Windows**, when `VendorName` is set it becomes an intermediate segment (`<LocalApplicationData>\<Vendor>\<App>\.state`, or `<ApplicationData>\<Vendor>\<App>\.state` for the roamable variant), grouping the application under the vendor folder; otherwise it is omitted. This is independent of `AllowCompatMode`.
 
 On **macOS**, the `<id>` segment is resolved as follows:
 
@@ -84,7 +102,7 @@ Which leads to the following issue: whet if your application obtains the path to
 
 **AppDirs** resolves this conundrum by introducing two concepts: **base** and **leaf** directories.
 
-Members whose name ends with `Directory` (such as `StateDirectory`) denote **leaf** directories: locations your application writes into directly. AppDirs guarantees that **no leaf directory contains another AppDirs-generated leaf directory on any operating system**, so different kinds of data never nest inside one another.
+Members whose name ends with `Directory` (such as `StateDirectory`) denote **leaf** directories: locations your application writes into directly. AppDirs guarantees that **no leaf directory contains another AppDirs-generated leaf directory on any operating system**, so different kinds of data never nest inside one another. This holds across both the roamable and non-roamable variants of `StateDirectory`.
 
 The intermediate **base** directories used to derive the leaves (for example the macOS `Application Support` base, or the Linux data base) are an implementation detail and are not exposed directly.
 
@@ -96,14 +114,14 @@ Note that to be absolutely safe, you should never use entry names that start fro
 
 Resolution is pure and performs no filesystem I/O, and it **never** falls back to the current working directory (unlike `Environment.GetFolderPath` .NET API). If a required base cannot be determined as a rooted absolute path, the corresponding member throws instead of trying to guess or resolve the folder. For example,
 
-- on Linux, a missing `$HOME` (when `XDG_STATE_HOME` is also absent or relative) throws an `InvalidOperationException`.
+- on Linux, a missing `$HOME` (when the relevant `XDG_STATE_HOME` / `XDG_CONFIG_HOME` is also absent or relative) throws an `InvalidOperationException`.
 - on macOS / Windows, an empty, relative or otherwise unresolvable special-folder value throws an `InvalidOperationException`.
 - on macOS, a disabled compatibility mode combined with a missing `MacOSBundleIdentifier` prevents us from guessing the macOS package identifier, and therefore throws an `InvalidOperationException`.
 
 ```csharp
 try
 {
-    var state = new ApplicationDirectories("MyApp").StateDirectory;
+    var state = new ApplicationDirectories("MyApp").StateDirectory();
 }
 catch (InvalidOperationException ex)
 {

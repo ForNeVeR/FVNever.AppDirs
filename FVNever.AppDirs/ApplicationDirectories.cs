@@ -103,27 +103,39 @@ public sealed class ApplicationDirectories
     /// The directory holding the application's <em>state</em>: data that persists between runs but is
     /// non-portable and non-essential (logs, history, recent files, window/layout state).
     /// </summary>
-    /// <value>
-    /// A leaf directory resolved per operating system:
+    /// <param name="roamable">
+    /// Selects the state variant. When <see langword="false"/> (the default), resolves a machine-local, non-roaming
+    /// location. When <see langword="true"/>, resolves a location intended to roam or sync between machines (for
+    /// example the Windows Roaming profile).
+    /// </param>
+    /// <returns>
+    /// A leaf directory resolved per operating system and variant:
     /// <list type="bullet">
     /// <item><description>
-    /// Linux: <c>$XDG_STATE_HOME/&lt;App&gt;</c> when <c>XDG_STATE_HOME</c> is an absolute path, otherwise
-    /// <c>$HOME/.local/state/&lt;App&gt;</c>.
+    /// Linux, non-roamable: <c>$XDG_STATE_HOME/&lt;App&gt;</c> when <c>XDG_STATE_HOME</c> is an absolute path,
+    /// otherwise <c>$HOME/.local/state/&lt;App&gt;</c>.
     /// </description></item>
     /// <item><description>
-    /// macOS: <c>&lt;ApplicationSupport&gt;/&lt;App&gt;/.state</c>, where the Application Support base is resolved
+    /// Linux, roamable: <c>$XDG_CONFIG_HOME/&lt;App&gt;/.roamableState</c> when <c>XDG_CONFIG_HOME</c> is an absolute
+    /// path, otherwise <c>$HOME/.config/&lt;App&gt;/.roamableState</c>. XDG has no native roaming concept, so the
+    /// configuration base — the bucket users most commonly sync or back up — is used.
+    /// </description></item>
+    /// <item><description>
+    /// macOS, non-roamable: <c>&lt;ApplicationSupport&gt;/&lt;App&gt;/.state</c>; roamable:
+    /// <c>&lt;ApplicationSupport&gt;/&lt;App&gt;/.roamableState</c>, where the Application Support base is resolved
     /// via the .NET system API.
     /// </description></item>
     /// <item><description>
-    /// Windows: <c>&lt;LocalApplicationData&gt;\&lt;App&gt;\.state</c>, where the Local Application Data base is
-    /// resolved via the .NET system API.
+    /// Windows, non-roamable: <c>&lt;LocalApplicationData&gt;\&lt;App&gt;\.state</c>; roamable:
+    /// <c>&lt;ApplicationData&gt;\&lt;App&gt;\.state</c> (the Roaming profile). The vendor segment (when set) is
+    /// inserted for both variants, and the bases are resolved via the .NET system API.
     /// </description></item>
     /// </list>
-    /// </value>
+    /// </returns>
     /// <exception cref="InvalidOperationException">
     /// Thrown when the required base directory cannot be determined as a rooted absolute path (for example a
     /// missing <c>$HOME</c> or an unresolvable special folder). The current working directory is never used.
     /// </exception>
-    public AbsolutePath StateDirectory =>
-        ApplicationDirectoriesResolver.ResolveStateDirectory(_environment, _identity);
+    public AbsolutePath StateDirectory(bool roamable = false) =>
+        ApplicationDirectoriesResolver.ResolveStateDirectory(_environment, _identity, roamable);
 }

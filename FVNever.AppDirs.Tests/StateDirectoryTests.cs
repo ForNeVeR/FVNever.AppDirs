@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: MIT
 
-using System.Reflection;
 using TruePath;
 
 namespace FVNever.AppDirs.Tests;
@@ -18,125 +17,134 @@ public class StateDirectoryTests
     // -------------------- Cross-OS mapping (via the fake) --------------------
 
     [Test]
-    public async Task Linux_WithAbsoluteXdgStateHome_UsesIt()
+    [Arguments(false, "XDG_STATE_HOME", null)]
+    [Arguments(true, "XDG_CONFIG_HOME", ".roamableState")]
+    public async Task Linux_WithAbsoluteXdgBase_UsesIt(bool roamable, string envVar, string? leaf)
     {
-        var xdg = HostAbsolute("xdg-state");
+        var xdg = HostAbsolute("xdg-base");
         var env = new FakeSystemEnvironment(OperatingSystemKind.Linux)
         {
             Home = HostAbsolute("home")
-        }.WithEnvironmentVariable("XDG_STATE_HOME", xdg.Value);
+        }.WithEnvironmentVariable(envVar, xdg.Value);
 
-        var actual = new ApplicationDirectories(AppName, env).StateDirectory;
+        var actual = new ApplicationDirectories(AppName, env).StateDirectory(roamable);
 
-        await Assert.That(actual).IsEqualTo(xdg / AppName);
+        var expected = xdg / AppName;
+        if (leaf is not null) expected = expected / leaf;
+        await Assert.That(actual).IsEqualTo(expected);
     }
 
     [Test]
-    public async Task Linux_WithoutXdgStateHome_UsesHomeDefault()
+    [Arguments(false, false)]
+    [Arguments(false, true)]
+    [Arguments(true, false)]
+    [Arguments(true, true)]
+    public async Task Linux_WithoutAbsoluteXdgBase_UsesHomeDefault(bool roamable, bool setRelativeXdg)
     {
         var home = HostAbsolute("home");
         var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = home };
 
-        var actual = new ApplicationDirectories(AppName, env).StateDirectory;
+        // Per the XDG spec, a relative XDG_* value is ignored and the $HOME-based default is used.
+        if (setRelativeXdg)
+        {
+            env = env.WithEnvironmentVariable(roamable ? "XDG_CONFIG_HOME" : "XDG_STATE_HOME", "relative/path");
+        }
 
-        await Assert.That(actual).IsEqualTo(home / ".local" / "state" / AppName);
+        var actual = new ApplicationDirectories(AppName, env).StateDirectory(roamable);
+
+        var expected = roamable
+            ? home / ".config" / AppName / ".roamableState"
+            : home / ".local" / "state" / AppName;
+        await Assert.That(actual).IsEqualTo(expected);
     }
 
     [Test]
-    public async Task Linux_WithRelativeXdgStateHome_IsIgnored()
+    public async Task DefaultAndExplicitNonRoamable_AreEquivalent()
     {
         var home = HostAbsolute("home");
-        var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = home }
-            .WithEnvironmentVariable("XDG_STATE_HOME", "relative/state");
+        var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = home };
+        var dirs = new ApplicationDirectories(AppName, env);
 
-        var actual = new ApplicationDirectories(AppName, env).StateDirectory;
-
-        await Assert.That(actual).IsEqualTo(home / ".local" / "state" / AppName);
+        await Assert.That(dirs.StateDirectory()).IsEqualTo(dirs.StateDirectory(roamable: false));
     }
 
     [Test]
-    public async Task MacOs_ExplicitBundleIdentifier_UsesItUnderApplicationSupport()
+    [Arguments(false, ".state")]
+    [Arguments(true, ".roamableState")]
+    public async Task MacOs_ExplicitBundleIdentifier_UsesLeafUnderApplicationSupport(bool roamable, string leaf)
     {
         var appSupport = HostAbsolute("Application Support");
         var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
             .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
 
         // An explicit bundle identifier wins regardless of the compatibility flag.
-        var actual = new ApplicationDirectories(AppName, env, macOsBundleIdentifier: "com.acme.MyApp").StateDirectory;
+        var actual = new ApplicationDirectories(AppName, env, macOsBundleIdentifier: "com.acme.MyApp").StateDirectory(roamable);
 
-        await Assert.That(actual).IsEqualTo(appSupport / "com.acme.MyApp" / ".state");
+        await Assert.That(actual).IsEqualTo(appSupport / "com.acme.MyApp" / leaf);
     }
 
     [Test]
-    public async Task MacOs_CompatModeWithVendor_ReconstructsIdentifier()
+    [Arguments(false, ".state")]
+    [Arguments(true, ".roamableState")]
+    public async Task MacOs_CompatModeWithVendor_ReconstructsIdentifier(bool roamable, string leaf)
     {
         var appSupport = HostAbsolute("Application Support");
         var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
             .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
 
-        var actual = new ApplicationDirectories(AppName, env, vendorName: "Acme", allowCompatMode: true).StateDirectory;
+        var actual = new ApplicationDirectories(AppName, env, vendorName: "Acme", allowCompatMode: true).StateDirectory(roamable);
 
-        await Assert.That(actual).IsEqualTo(appSupport / "Acme.MyApp" / ".state");
+        await Assert.That(actual).IsEqualTo(appSupport / "Acme.MyApp" / leaf);
     }
 
     [Test]
-    public async Task MacOs_CompatModeWithoutVendor_UsesAppName()
+    [Arguments(false, ".state")]
+    [Arguments(true, ".roamableState")]
+    public async Task MacOs_CompatModeWithoutVendor_UsesAppName(bool roamable, string leaf)
     {
         var appSupport = HostAbsolute("Application Support");
         var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
             .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
 
-        var actual = new ApplicationDirectories(AppName, env, allowCompatMode: true).StateDirectory;
+        var actual = new ApplicationDirectories(AppName, env, allowCompatMode: true).StateDirectory(roamable);
 
-        await Assert.That(actual).IsEqualTo(appSupport / AppName / ".state");
+        await Assert.That(actual).IsEqualTo(appSupport / AppName / leaf);
     }
 
     [Test]
-    public async Task MacOs_NoBundleIdentifierAndCompatDisabled_Throws()
+    [Arguments(false, Environment.SpecialFolder.LocalApplicationData, null)]
+    [Arguments(true, Environment.SpecialFolder.ApplicationData, null)]
+    [Arguments(false, Environment.SpecialFolder.LocalApplicationData, "Acme")]
+    [Arguments(true, Environment.SpecialFolder.ApplicationData, "Acme")]
+    public async Task Windows_UsesCorrectBaseWithDotState(bool roamable, Environment.SpecialFolder baseFolder, string? vendor)
     {
-        var appSupport = HostAbsolute("Application Support");
-        var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
-            .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
-
-        // Compat mode disabled and no explicit identifier: fail fast rather than guessing.
-        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory)
-            .Throws<InvalidOperationException>();
-    }
-
-    [Test]
-    public async Task Windows_WithoutVendor_UsesLocalAppDataBaseWithDotState()
-    {
-        var localAppData = HostAbsolute("LocalAppData");
+        var baseDir = HostAbsolute("WindowsBase");
         var env = new FakeSystemEnvironment(OperatingSystemKind.Windows)
-            .WithSpecialFolder(Environment.SpecialFolder.LocalApplicationData, localAppData);
+            .WithSpecialFolder(baseFolder, baseDir);
 
-        var actual = new ApplicationDirectories(AppName, env).StateDirectory;
+        var actual = new ApplicationDirectories(AppName, env, vendorName: vendor).StateDirectory(roamable);
 
-        await Assert.That(actual).IsEqualTo(localAppData / AppName / ".state");
+        var expected = vendor is null
+            ? baseDir / AppName / ".state"
+            : baseDir / vendor / AppName / ".state";
+        await Assert.That(actual).IsEqualTo(expected);
     }
 
     [Test]
-    public async Task Windows_WithVendor_InsertsVendorSegment()
-    {
-        var localAppData = HostAbsolute("LocalAppData");
-        var env = new FakeSystemEnvironment(OperatingSystemKind.Windows)
-            .WithSpecialFolder(Environment.SpecialFolder.LocalApplicationData, localAppData);
-
-        var actual = new ApplicationDirectories(AppName, env, vendorName: "Acme").StateDirectory;
-
-        await Assert.That(actual).IsEqualTo(localAppData / "Acme" / AppName / ".state");
-    }
-
-    [Test]
-    public async Task Linux_IgnoresVendorAndBundleIdentifier()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task Linux_IgnoresVendorAndBundleIdentifier(bool roamable)
     {
         var home = HostAbsolute("home");
         var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = home };
 
         var actual = new ApplicationDirectories(
-            AppName, env, vendorName: "Acme", macOsBundleIdentifier: "com.acme.MyApp", allowCompatMode: true).StateDirectory;
+            AppName, env, vendorName: "Acme", macOsBundleIdentifier: "com.acme.MyApp", allowCompatMode: true).StateDirectory(roamable);
 
-        await Assert.That(actual).IsEqualTo(home / ".local" / "state" / AppName);
+        var expected = roamable
+            ? home / ".config" / AppName / ".roamableState"
+            : home / ".local" / "state" / AppName;
+        await Assert.That(actual).IsEqualTo(expected);
     }
 
     // -------------------- Application-name edge cases --------------------
@@ -149,7 +157,7 @@ public class StateDirectoryTests
         var home = HostAbsolute("home");
         var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = home };
 
-        var actual = new ApplicationDirectories(appName, env).StateDirectory;
+        var actual = new ApplicationDirectories(appName, env).StateDirectory();
 
         await Assert.That(actual).IsEqualTo(home / ".local" / "state" / appName);
     }
@@ -191,28 +199,48 @@ public class StateDirectoryTests
     // -------------------- Fail-fast / never-CWD --------------------
 
     [Test]
-    public async Task Linux_MissingHome_ThrowsAndNeverReturnsCwd()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task Linux_MissingHome_ThrowsAndNeverReturnsCwd(bool roamable)
     {
-        // No home and no XDG_STATE_HOME configured: resolution must fail fast, not degrade to CWD.
+        // No home and no XDG_STATE_HOME / XDG_CONFIG_HOME configured: resolution must fail fast, not degrade to CWD.
         var env = new FakeSystemEnvironment(OperatingSystemKind.Linux);
-        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory)
+        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory(roamable))
             .Throws<InvalidOperationException>();
     }
 
     [Test]
-    public async Task MacOs_UnresolvableApplicationSupport_Throws()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task MacOs_UnresolvableApplicationSupport_Throws(bool roamable)
     {
         // Special folder not configured emulates an unresolvable value; compat mode enabled so the failure is the base.
         var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs);
-        await Assert.That(() => new ApplicationDirectories(AppName, env, allowCompatMode: true).StateDirectory)
+        await Assert.That(() => new ApplicationDirectories(AppName, env, allowCompatMode: true).StateDirectory(roamable))
             .Throws<InvalidOperationException>();
     }
 
     [Test]
-    public async Task Windows_UnresolvableLocalAppData_Throws()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task MacOs_NoBundleIdentifierAndCompatDisabled_Throws(bool roamable)
+    {
+        var appSupport = HostAbsolute("Application Support");
+        var env = new FakeSystemEnvironment(OperatingSystemKind.MacOs)
+            .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, appSupport);
+
+        // Compat mode disabled and no explicit identifier: fail fast rather than guessing.
+        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory(roamable))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task Windows_UnresolvableBase_Throws(bool roamable)
     {
         var env = new FakeSystemEnvironment(OperatingSystemKind.Windows);
-        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory)
+        await Assert.That(() => new ApplicationDirectories(AppName, env).StateDirectory(roamable))
             .Throws<InvalidOperationException>();
     }
 
@@ -228,11 +256,11 @@ public class StateDirectoryTests
             var dirs = new ApplicationDirectories(AppName, FullyConfiguredEnvironment(os), allowCompatMode: true);
             var leaves = EnumerateLeafDirectories(dirs);
 
-            foreach (var a in leaves)
-            foreach (var b in leaves)
+            for (var i = 0; i < leaves.Count; i++)
+            for (var j = 0; j < leaves.Count; j++)
             {
-                if (ReferenceEquals(a.Property, b.Property)) continue;
-                await Assert.That(a.Path.IsPrefixOf(b.Path))
+                if (i == j) continue;
+                await Assert.That(leaves[i].IsPrefixOf(leaves[j]))
                     .IsFalse();
             }
         }
@@ -245,7 +273,7 @@ public class StateDirectoryTests
     {
         if (!OperatingSystem.IsWindows()) return;
 
-        var state = new ApplicationDirectories(AppName).StateDirectory;
+        var state = new ApplicationDirectories(AppName).StateDirectory();
         var localAppData = new AbsolutePath(Environment.GetEnvironmentVariable("USERPROFILE")!) / "AppData" / "Local";
 
         await Assert.That(state).IsEqualTo(localAppData / AppName / ".state");
@@ -256,7 +284,7 @@ public class StateDirectoryTests
     {
         if (!OperatingSystem.IsLinux()) return;
 
-        var state = new ApplicationDirectories(AppName).StateDirectory;
+        var state = new ApplicationDirectories(AppName).StateDirectory();
 
         var xdg = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
         AbsolutePath expected;
@@ -278,7 +306,7 @@ public class StateDirectoryTests
     {
         if (!OperatingSystem.IsMacOS()) return;
 
-        var state = new ApplicationDirectories(AppName, allowCompatMode: true).StateDirectory;
+        var state = new ApplicationDirectories(AppName, allowCompatMode: true).StateDirectory();
         var appSupport = new AbsolutePath(Environment.GetEnvironmentVariable("HOME")!) / "Application Support";
 
         await Assert.That(state).IsEqualTo(appSupport / AppName / ".state");
@@ -292,10 +320,13 @@ public class StateDirectoryTests
             .WithSpecialFolder(Environment.SpecialFolder.ApplicationData, HostAbsolute("Application Support"))
             .WithSpecialFolder(Environment.SpecialFolder.LocalApplicationData, HostAbsolute("LocalAppData"));
 
-    private static List<(PropertyInfo Property, AbsolutePath Path)> EnumerateLeafDirectories(ApplicationDirectories dirs) =>
-        typeof(ApplicationDirectories)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.Name.EndsWith("Directory", StringComparison.Ordinal) && p.PropertyType == typeof(AbsolutePath))
-            .Select(p => (p, (AbsolutePath)p.GetValue(dirs)!))
-            .ToList();
+    /// <summary>
+    /// Evaluates every leaf directory the application exposes. <see cref="ApplicationDirectories.StateDirectory"/> is a
+    /// method (not a property), so its roamable and non-roamable variants are enumerated explicitly.
+    /// </summary>
+    private static List<AbsolutePath> EnumerateLeafDirectories(ApplicationDirectories dirs) =>
+    [
+        dirs.StateDirectory(roamable: false),
+        dirs.StateDirectory(roamable: true)
+    ];
 }
