@@ -307,7 +307,7 @@ public class StateDirectoryTests
         if (!OperatingSystem.IsMacOS()) return;
 
         var state = new ApplicationDirectories(AppName, allowCompatMode: true).StateDirectory();
-        var appSupport = new AbsolutePath(Environment.GetEnvironmentVariable("HOME")!) / "Application Support";
+        var appSupport = new AbsolutePath(Environment.GetEnvironmentVariable("HOME")!) / "Library" / "Application Support";
 
         await Assert.That(state).IsEqualTo(appSupport / AppName / ".state");
         await Assert.That(state.Value.Contains("Library/Application Support", StringComparison.Ordinal)).IsTrue();
