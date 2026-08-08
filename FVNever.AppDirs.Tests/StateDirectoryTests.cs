@@ -190,7 +190,7 @@ public class StateDirectoryTests
     [Test]
     [Arguments("")]
     [Arguments("   ")]
-    public async Task WhitespaceMacOSBundleIdentifier_Throws(string bundleId)
+    public async Task WhitespaceMacOsBundleIdentifier_Throws(string bundleId)
     {
         var env = new FakeSystemEnvironment(OperatingSystemKind.Linux) { Home = HostAbsolute("home") };
         await Assert.That(() => new ApplicationDirectories(AppName, env, macOsBundleIdentifier: bundleId)).Throws<ArgumentException>();

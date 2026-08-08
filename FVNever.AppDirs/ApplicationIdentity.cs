@@ -18,7 +18,7 @@ namespace FVNever.AppDirs;
 /// <param name="AllowCompatMode">
 /// A flag permitting reconstruction of the macOS bundle identifier from the available data when none is supplied.
 /// </param>
-internal record struct ApplicationIdentity(
+internal readonly record struct ApplicationIdentity(
     string AppName,
     string? VendorName,
     string? MacOsBundleIdentifier,

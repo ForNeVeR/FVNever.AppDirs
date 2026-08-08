@@ -37,7 +37,7 @@ internal sealed class SystemEnvironment : ISystemEnvironment
     /// <inheritdoc />
     public AbsolutePath HomeDirectory =>
         ToAbsolutePath(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify),
             "the home directory"
         );
 
