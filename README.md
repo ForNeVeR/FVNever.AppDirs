@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2024-2026 Friedrich von Never <friedrich@fornever.me>
 SPDX-License-Identifier: MIT
 -->
 
-FVNever.AppDirs [![Status Zero][status-zero]][andivionian-status-classifier] [![FVNever.AppDirs on nuget.org][nuget.badge]][nuget]
+FVNever.AppDirs [![Status Enfer][status-enfer]][andivionian-status-classifier] [![FVNever.AppDirs on nuget.org][nuget.badge]][nuget]
 ========
 A .NET library providing XDG-like base-directory resolution for application config, data, cache, and state directories in a cross-platform way.
 
@@ -79,7 +79,7 @@ The project is distributed under the terms of [the MIT license][docs.license].
 
 The license indication in the project's sources is compliant with the [REUSE specification v3.3][reuse.spec].
 
-[andivionian-status-classifier]: https://andivionian.fornever.me/v1/#status-zero-
+[andivionian-status-classifier]: https://andivionian.fornever.me/v1/#status-enfer-
 [docs.changelog]: CHANGELOG.md
 [docs.contributing]: CONTRIBUTING.md
 [docs.license]: LICENSE.txt
@@ -92,5 +92,4 @@ The license indication in the project's sources is compliant with the [REUSE spe
 [spec.macos]: https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/MacOSXDirectories/MacOSXDirectories.html
 [spec.windows]: https://learn.microsoft.com/en-us/windows/win32/shell/known-folders
 [spec.xdg]: https://specifications.freedesktop.org/basedir/latest/
-[status-zero]: https://img.shields.io/badge/status-zero-lightgrey.svg
-[truepath]: https://github.com/ForNeVeR/TruePath
+[status-enfer]: https://img.shields.io/badge/status-enfer-orange.svg
