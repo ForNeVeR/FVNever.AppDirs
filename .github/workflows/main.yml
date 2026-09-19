@@ -17,7 +17,7 @@ on:
   workflow_dispatch: 
 jobs:
   verify-workflows:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: 1
@@ -38,8 +38,8 @@ jobs:
       matrix:
         image:
         - macos-26
-        - ubuntu-24.04
-        - ubuntu-24.04-arm
+        - ubuntu-26.04
+        - ubuntu-26.04-arm
         - windows-11-arm
         - windows-2025
       fail-fast: false
@@ -64,7 +64,7 @@ jobs:
       run: dotnet test
       timeout-minutes: 10
   check-docs:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: 1
@@ -84,7 +84,7 @@ jobs:
     - name: Validate docfx
       run: dotnet docfx docs/docfx.json --warningsAsErrors
   check-all-warnings:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: 1
@@ -102,14 +102,14 @@ jobs:
     - name: Verify with full warning check
       run: dotnet build -p:AllWarningsMode=true
   licenses:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
     - name: Check out the sources
       uses: actions/checkout@v7
     - name: REUSE license check
       uses: fsfe/reuse-action@v6
   encoding:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
     - name: Check out the sources
       uses: actions/checkout@v7
@@ -117,7 +117,7 @@ jobs:
       shell: pwsh
       run: Install-Module VerifyEncoding -Repository PSGallery -RequiredVersion 2.3.0 -Force && Test-Encoding
   todos:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
     - name: Check out the sources
       uses: actions/checkout@v7
